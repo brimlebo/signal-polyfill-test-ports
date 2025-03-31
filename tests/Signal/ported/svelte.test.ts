@@ -14,6 +14,12 @@ describe('Ported - Svelte', () => {
 		let count = new Signal.State(0);
 
 		let double = new Signal.Computed(() => count.get() * 2);
+
+        /* let w = new Signal.subtle.Watcher(() => {
+            log.push(`${count.get()}:${double.get()}`)
+        });
+
+        w.watch(double) */
         
         effect(() => {
             log.push(`${count.get()}:${double.get()}`)
@@ -23,10 +29,22 @@ describe('Ported - Svelte', () => {
         count.set(2);
 
         assert.deepEqual(log, ['0:0', '1:2', '2:4']);
+
+        /* w.unwatch(double) */
 	});
 
+    // Something to test if effect() works as I want
+    it('teeeeeeeeeests', () => {
+        let counter = new Signal.State(0)
+        counter.set(1)
 
-    it('is computed from state', () => {
-        
-    })
+        // Should in theory run until "infinitly" until the counter is 1000
+        effect(() => {
+            if (counter.get() !== 1000) {
+                counter.set(counter.get() + 1)
+            }
+        });
+
+        assert.equal(1000, counter.get())
+    });
 });
