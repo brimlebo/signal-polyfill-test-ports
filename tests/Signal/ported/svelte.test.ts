@@ -1,7 +1,5 @@
-import { describe, test, it, assert, expect, vi, afterEach } from 'vitest';
+import { describe, test, assert, expect, vi, afterEach } from 'vitest';
 import { Signal } from '../../../src';
-import { Sign } from 'crypto';
-import { count } from 'console';
 
 
 describe('Ported - Svelte', () => {
