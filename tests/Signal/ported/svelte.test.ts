@@ -177,4 +177,65 @@ describe('Ported - Svelte', () => {
         assert.deepEqual(log, [20]);
 	});
 
+    // https://github.com/sveltejs/svelte/blob/04257925d22d8ecef37f50330ac258c7f97dca0c/packages/svelte/tests/signals/test.ts#L756
+    test('deriveds update upon reconnection #1', () => {
+		let a = new Signal.State(false);
+		let b = new Signal.State(false);
+
+		let c = new Signal.Computed(() => a.get());
+		let d = new Signal.Computed(() => c.get());
+
+		let last: Record<string, boolean | null> = {};
+
+		effect(() => {
+			last = {
+				a: a.get(),
+				b: b.get(),
+				c: c.get(),
+				d: a.get() || b.get() ? d.get() : null
+			};
+		});
+
+        assert.deepEqual(last, { a: false, b: false, c: false, d: null });
+
+        a.set(true)
+        b.set(true)
+        flushPending();
+        assert.deepEqual(last, { a: true, b: true, c: true, d: true });
+
+        a.set(false)
+        b.set(false)
+        flushPending();
+        assert.deepEqual(last, { a: false, b: false, c: false, d: null });
+
+        a.set(true)
+        b.set(true)
+        flushPending();
+        assert.deepEqual(last, { a: true, b: true, c: true, d: true });
+
+        a.set(false)
+        b.set(false)
+        flushPending();
+        assert.deepEqual(last, { a: false, b: false, c: false, d: null });
+
+        b.set(true)
+        flushPending();
+        assert.deepEqual(last, { a: false, b: true, c: false, d: false });
+	});
+
+    // https://github.com/sveltejs/svelte/blob/04257925d22d8ecef37f50330ac258c7f97dca0c/packages/svelte/tests/signals/test.ts#L981
+    test('deriveds do not depend on state they own', () => {
+        let s: Signal.State<unknown>;
+
+        const d = new Signal.Computed(() => {
+            s = new Signal.State(0);
+            return s.get();
+        });
+
+        assert.equal(d.get(), 0);
+
+        s!.set(1);
+        assert.equal(d.get(), 0);
+	});
+
 });

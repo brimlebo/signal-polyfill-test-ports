@@ -9,28 +9,28 @@ describe('Ported - Solid 2.0', () => {
   const notifySpy = vi.fn();
 
   const watcher = new Signal.subtle.Watcher(() => {
-      notifySpy();
+    notifySpy();
   });
 
   function effect(cb: () => Destructor | void): () => void {
-      let destructor: Destructor | void;
-      const c = new Signal.Computed(() => (destructor = cb()));
-      watcher.watch(c);
-      c.get();
-      return () => {
-          destructor?.();
-          watcher.unwatch(c);
-      };
-  }
+    let destructor: Destructor | void;
+    const c = new Signal.Computed(() => (destructor = cb()));
+    watcher.watch(c);
+    c.get();
+    return () => {
+      destructor?.();
+      watcher.unwatch(c);
+    };
+  };
 
   // Forces tasks to be run
   function flushPending() {
-      for (const signal of watcher.getPending()) {
-          signal.get();
-      }
+    for (const signal of watcher.getPending()) {
+      signal.get();
+    };
 
-      expect(watcher.getPending()).toStrictEqual([]);
-  }
+    expect(watcher.getPending()).toStrictEqual([]);
+  };
 
   afterEach(() => watcher.unwatch(...Signal.subtle.introspectSources(watcher)));
 
