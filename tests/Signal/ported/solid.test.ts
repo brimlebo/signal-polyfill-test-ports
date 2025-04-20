@@ -58,7 +58,7 @@ describe('Ported - Solid 2.0', () => {
     expect(memo.get()).toBe("Hello John");
   });
 
-  // https://github.com/solidjs/solid/blob/9ca44cc427d02ccf06ac33b3629a361c4910ae2b/packages/solid/test/signals.spec.ts#L186
+  // https://github.com/solidjs/solid/blob/9ca44cc427d02ccf06ac33b3629a361c4910ae2b/packages/solid/test/signals.spec.ts#L187
   test("Mute an effect", () => {
     let temp: string;
     const sign = new Signal.State("thoughts");
