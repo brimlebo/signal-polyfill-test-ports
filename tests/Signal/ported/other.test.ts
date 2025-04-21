@@ -4,11 +4,17 @@ import { Signal } from '../../../src';
 
 describe('other stuff', () => {
 
-    // Test for 2. for Kirill?
-    // Unsure if implemented correctly
+    // 1. thing for Turku guys
+    // The first case is when signal value is a signal itself. The intention is to check what could go wrong in that configuration. 
+    // I don't have a particular case in mind, but the idea is to show that nothing will go wrong if one decides to write programs that way."
+
+
+    // Test for 2. for Turku guys
+    // Unsure if implemented correctly.
+    // Currently seems like the system just assumes the purity of the signal rather than enforce it? No warning on doing a .set(...) inside a computed signal?
     // "The second case is to try and make a dependency between signals without introducing a computed signal, thus breaking the signal algorithm invariant. 
-    // I think that simplest test would be to capture a state-signal-modifying lambda in computed signal lambda which depends on the modified state itself"
-    test('should not allow mutation inside computed via captured lambda', () => {
+    // I think that the simplest test would be to capture a state-signal-modifying lambda in computed signal lambda which depends on the modified state itself"
+    test('allows mutation inside computed via captured lambda', () => {
         const a = new Signal.State(0);
 
         let updater;
@@ -25,6 +31,25 @@ describe('other stuff', () => {
 
         expect(a.get()).toBe(1);
         expect(b.get()).toBe(1);
+    });
+
+    // Just a small test to check that it throws a an error on cycles in computeds
+    // Could be moved into cycles tests if Daniel wans more?
+    // Box with an open lid
+    // A  F
+    // |  |
+    // B->E
+    // |  |
+    // C<-D
+    test('cycle', () => {
+        let a = new Signal.Computed(() => b.get() + 1)
+        let b = new Signal.Computed(() => c.get() + 1)
+        let c = new Signal.Computed(() => d.get() + 1)
+        let d = new Signal.Computed(() => e.get() + 1)
+        let e = new Signal.Computed(() => f.get() + b.get() + 1)
+        let f = new Signal.Computed(() => 0)
+
+        expect(() => a.get()).toThrow()
     });
 
 });
