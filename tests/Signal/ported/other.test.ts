@@ -9,6 +9,7 @@ describe('other stuff', () => {
     // "The first case is when signal value is a signal itself. The intention is to check what could go wrong in that configuration. 
     // I don't have a particular case in mind, but the idea is to show that nothing will go wrong if one decides to write programs that way."
     test('Signal in a signal in a signal or in a new signal', () => {
+        // Signal can contain a reference to another signal, signal f functions correctly even after the many hoops
         const a = new Signal.State(0);
         const b = new Signal.State(a);
 
@@ -18,11 +19,28 @@ describe('other stuff', () => {
         const e = new Signal.Computed(() => new Signal.Computed(() => a));  // Same as c
         const f = new Signal.Computed(() => e.get().get().get() + 1);
 
+        // Signal can contain a new Signal inside
+        const g = new Signal.State(new Signal.State("hello"));
+
+        expect(g.get().get()).toBe("hello")
+
+        // Can set a new state signal as the state
+        g.set(new Signal.State("No"))
+
+        expect(g.get().get()).toBe("No")
+
+        // Can .set(...) the value of the current signal inside the state
+        g.get().set("Potato")
+
+        expect(g.get().get()).toBe("Potato")
+
+        // Check that signal is correctly sent through the graph initially
         expect(b.get().get()).toBe(0);
         expect(d.get().get().get()).toBe(0);
         expect(e.get().get().get()).toBe(0);
         expect(f.get()).toBe(1);
 
+        // Check that the computed signals update correctly when a set happens on the root state
         a.set(5)
 
         expect(b.get().get()).toBe(5);
@@ -40,7 +58,7 @@ describe('other stuff', () => {
 
 
     // Test for 2. for Turku guys
-    // Unsure if implemented correctly.
+    // Unsure if implemented correctly at the moment.
     // Currently seems like the system just assumes the purity of the signal rather than enforce it? No warning on doing a .set(...) inside a computed signal?
     // "The second case is to try and make a dependency between signals without introducing a computed signal, thus breaking the signal algorithm invariant. 
     // I think that the simplest test would be to capture a state-signal-modifying lambda in computed signal lambda which depends on the modified state itself"
