@@ -1,4 +1,4 @@
-import {describe, expect, test} from 'vitest';
+import {afterEach, describe, expect, test, vi} from 'vitest';
 import {Signal} from '../../../src'
 
 describe('Ported - Alien', () => {
@@ -19,6 +19,7 @@ describe('Ported - Alien', () => {
 
   });
 
+  //https://github.com/stackblitz/alien-signals/blob/master/tests/computed.spec.ts#L18
   test('Should propagate updated source value through chained computations', () => {
     const src = new Signal.State(0);
     const a = new Signal.Computed(() => src.get());
@@ -31,6 +32,7 @@ describe('Ported - Alien', () => {
     expect(d.get()).toBe(2);
   });
 
+  //https://github.com/stackblitz/alien-signals/blob/master/tests/computed.spec.ts#L30
   test('Should handle flags that are indirectly updated during checkDirty', () => {
     const a = new Signal.State(false);
     const b = new Signal.Computed(() => a.get());
@@ -51,6 +53,7 @@ describe('Ported - Alien', () => {
 
   });
 
+  //https://github.com/stackblitz/alien-signals/blob/master/tests/computed.spec.ts#L47
   test('Should not update if the signal value is reverted', () => {
     let times = 0;
 
@@ -64,7 +67,63 @@ describe('Ported - Alien', () => {
     src.set(1);
     src.set(0);
     c1.get();
-    expect(times).toBe(1)
+    expect(times).toBe(1) // should not update?
+  });
+
+  // Effect implementation taken from watcher.test.ts
+  type Destructor = () => void;
+  const notifySpy = vi.fn();
+
+  const watcher = new Signal.subtle.Watcher(() => {
+    notifySpy();
+  });
+
+  function effect(cb: () => Destructor | void): () => void {
+    let destructor: Destructor | void;
+    const c = new Signal.Computed(() => (destructor = cb()));
+    watcher.watch(c);
+    c.get();
+    return () => {
+      destructor?.();
+      watcher.unwatch(c);
+    };
+  }
+
+  // Forces tasks to be run
+  function flushPending() {
+    for (const signal of watcher.getPending()) {
+      signal.get();
+    }
+
+    expect(watcher.getPending()).toStrictEqual([]);
+  }
+
+  afterEach(() => watcher.unwatch(...Signal.subtle.introspectSources(watcher)));
+
+
+  test('Should clear subscriptions when untracked by all subscribers', () => {
+    let bRunTimes = 0;
+
+    const a = new Signal.State(0);
+    const b = new Signal.Computed(() => {
+      bRunTimes++;
+      return a.get() * 2;
+      }
+    );
+
+    const stopEffect = effect(() => {
+      b.get();
+    });
+
+    expect(bRunTimes).toBe(1);
+    a.set(2);
+    flushPending();
+    expect(bRunTimes).toBe(2);
+    stopEffect();
+    a.set(3);
+    flushPending();
+    expect(bRunTimes).toBe(2);
+
   });
 
 
