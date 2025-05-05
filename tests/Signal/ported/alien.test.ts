@@ -67,7 +67,7 @@ describe('Ported - Alien', () => {
     src.set(1);
     src.set(0);
     c1.get();
-    expect(times).toBe(1) // should not update?
+    expect(times).toBe(1) // failing here, times == 2
   });
 
   // Effect implementation taken from watcher.test.ts
@@ -100,7 +100,7 @@ describe('Ported - Alien', () => {
 
   afterEach(() => watcher.unwatch(...Signal.subtle.introspectSources(watcher)));
 
-
+  // https://github.com/stackblitz/alien-signals/blob/master/tests/effect.spec.ts#L4
   test('Should clear subscriptions when untracked by all subscribers', () => {
     let bRunTimes = 0;
 
@@ -124,6 +124,66 @@ describe('Ported - Alien', () => {
     flushPending();
     expect(bRunTimes).toBe(2);
 
+  });
+
+  // https://github.com/stackblitz/alien-signals/blob/614fa6bb6fa680033d6788272ebcfeef1e072b39/tests/effect.spec.ts#L24
+  test('Should not run untracked inner effect', () => {
+    const a = new Signal.State(3);
+    const b = new Signal.Computed(() => a.get() > 0);
+
+    effect(() => {
+      if (b.get()) {
+        effect(() => {
+          if (a.get() == 0) {
+            throw new Error('bad');
+          }
+        });
+      }
+    });
+    a.set(2);
+    flushPending();
+    a.set(1);
+    flushPending();
+    a.set(0);
+    flushPending(); // throwing bad, should not run inner effect
+
+  });
+
+  // https://github.com/stackblitz/alien-signals/blob/614fa6bb6fa680033d6788272ebcfeef1e072b39/tests/effect.spec.ts#L84
+  test('Should trigger inner effects in sequence', () => {
+    const a = new Signal.State(0);
+    const b = new Signal.State(0);
+    const c = new Signal.Computed(() => a.get() - b.get());
+    const order: string[] = [];
+
+    effect(() => {
+      c.get();
+
+      effect(() => {
+        order.push('first inner');
+        a.get();
+      });
+
+      effect(() => {
+        order.push('last inner');
+        a.get();
+        b.get();
+      });
+    });
+
+    order.length = 0;
+
+    // from alien repo
+    // startBatch();
+    // b(1);
+    // a(1);
+    // endBatch();
+
+    b.set(1);
+    a.set(1);
+    flushPending() // simulate batched update ?
+
+    expect(order).toEqual(['first inner', 'last inner']);
   });
 
 
