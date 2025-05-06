@@ -140,6 +140,7 @@ describe('Ported - Alien', () => {
         });
       }
     });
+
     a.set(2);
     flushPending();
     a.set(1);
@@ -186,7 +187,91 @@ describe('Ported - Alien', () => {
     expect(order).toEqual(['first inner', 'last inner']);
   });
 
+  // https://github.com/stackblitz/alien-signals/blob/614fa6bb6fa680033d6788272ebcfeef1e072b39/tests/effect.spec.ts#L183
+  test('Should duplicate subscribers do not affect the notify order', () => {
+    const src1 = new Signal.State(0);
+    const src2 = new Signal.State(0);
+    const order: string[] = [];
+
+    effect(() => {
+      order.push('a');
+      watcher.unwatch(src2)
+      const isOne = src2.get() === 1;
+      watcher.watch(src2);
+      if (isOne) {
+        src1.get();
+
+      }
+      src2.get();
+      src1.get();
+    });
+    effect(() => {
+      order.push('b');
+      src1.get();
+
+    });
+    flushPending();
+    src2.set(1);
+    flushPending();
+    order.length = 0;
+    src1.set(src1.get() + 1);
+    flushPending();
+    expect(order).toEqual(['a','b']);
+
+  });
+
+  // https://github.com/stackblitz/alien-signals/blob/614fa6bb6fa680033d6788272ebcfeef1e072b39/tests/effect.spec.ts#L211
+  test('Should handle side effect with inner effects', () => {
+    const a = new Signal.State(0);
+    const b = new Signal.State(0);
+    const order: string[] = [];
+
+    effect(() => {
+      effect(() => {
+        a.get();
+        order.push('a');
+      });
+      effect(() => {
+        b.get();
+        order.push('b');
+      });
+      expect(order).toEqual(['a','b']);
+
+      order.length = 0;
+      b.set(1);
+      a.set(1);
+      expect(order).toEqual(['b', 'a']);
+    });
+
+    flushPending();
+
+  });
+
+  // https://github.com/stackblitz/alien-signals/blob/614fa6bb6fa680033d6788272ebcfeef1e072b39/tests/effect.spec.ts#L234
+  test('Should handle flags are indirectly updated during checkDirty', () => {
+    const a = new Signal.State(false);
+    const b = new Signal.Computed(() => a.get());
+    const c = new Signal.Computed(() => {
+      b.get();
+      return 0;
+    });
+    const d = new Signal.Computed(() => {
+      c.get();
+      return b.get();
+    });
+    let triggers = 0;
+
+    effect(() => {
+      d.get();
+      triggers++;
+    });
+    expect(triggers).toBe(1);
+    a.set(true);
+    flushPending()
+    expect(triggers).toBe(2);
+
+  });
 
 
-})
+});
 
